@@ -1,0 +1,176 @@
+<html>
+<head>
+    <title>Visualization of Universities of USA </title>
+    <script type="text/javascript" src="http://www.google.com/jsapi"></script>
+    <script type="text/javascript">   
+        
+        google.load('visualization', '1.0', {'packages':['corechart', 'controls']});
+        
+        google.setOnLoadCallback(queryData);
+        google.setOnLoadCallback(piChartSendQuery);
+        
+
+        // Send query to the Google Spreadsheet that contains the Cafe Sales data.  
+        function queryData() {
+            
+            var jsonData = JSON.parse(window.localStorage.getItem("dashboardData"));
+            if(jsonData){
+                var data = new google.visualization.DataTable(jsonData);
+                drawDashboard(data);
+            } 
+            else{
+                var query = new google.visualization.Query('https://docs.google.com/spreadsheets/d/1ysxGM_5Wf2DkYflMsM_UV_8eCLzxAhsfKck1MAkajKw/edit#gid=619494131');
+                query.setQuery("SELECT C, B, E, F, G, I, J, K WHERE (C = 'HI' or C = 'ID' or C = 'NH') label C 'States', E 'Full-Time', F 'Associate', G 'Assistant', I 'Full-Time', J 'Associate', K 'Assistant'");
+            
+                query.send(handleQueryResponse);
+            }
+        }
+         
+        function piChartSendQuery(){
+            
+            var jsonData = JSON.parse(window.localStorage.getItem("piC"));
+            if(jsonData){
+                var data = new google.visualization.DataTable(jsonData);
+                console.log(data)
+                plotPiChart(data);
+            }
+            else {
+                var Piquery = new google.visualization.Query(
+                'https://docs.google.com/spreadsheets/d/1ysxGM_5Wf2DkYflMsM_UV_8eCLzxAhsfKck1MAkajKw/edit#gid=619494131');
+                Piquery.setQuery('SELECT D, COUNT(B) GROUP BY D');
+                Piquery.send(handlePichartResponse);
+            }
+        }
+        
+        function plotPiChart(response){
+            var options = {
+                title: 'Percentage of different type of colleges in United States',
+                is3D: true,
+                height: 300,
+            };
+          
+            var chart = new google.visualization.PieChart(document.getElementById('piechart'))
+            chart.draw(response, options);
+        }
+
+        function handlePichartResponse(response){
+             // Always check for error. 
+            if (response.isError()) {
+                alert('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
+                return;
+            }
+            
+            var data = response.getDataTable();
+            
+            window.localStorage.setItem("piC", JSON.stringify(data));
+            
+            var options = {
+                title: 'Percentage of different type of colleges in United States',
+                is3D: true,
+                height: 300,
+            };
+            
+            var chart = new google.visualization.PieChart(document.getElementById('piechart'))
+            chart.draw(data, options);
+        }
+        
+        // Callback function that receives data from the Google Spreadsheet
+        function handleQueryResponse(response) {
+            if (response.isError()) {
+                alert('Error in query: ' + response.getMessage() + ' '
+                 + response.getDetailedMessage());
+                return;
+            }
+
+            // If there is no error, retrieve data from the Google Spreadsheet response. 
+            var dataTable = response.getDataTable();
+            window.localStorage.setItem("dashboardData", JSON.stringify(dataTable));
+            drawDashboard(dataTable)
+
+        }
+        
+        function drawDashboard(response){
+                        // Create column chart
+            var columnChart = new google.visualization.ChartWrapper({
+                'chartType': 'ColumnChart',
+                'containerId': 'bar_chart_div',
+                'view': { 'columns': [1,2,3,4] },
+                'options': {
+                    hAxis: { title: 'Average salary of different type of professor on selected states'},
+                    vAxis: { format: 'currency'},                    
+                   'title': 'Salary Division', // Put the title of the chart here. 
+                }
+            });
+            
+            var lineChart = new google.visualization.ChartWrapper({
+                'chartType': 'LineChart',
+                'containerId': 'line_chart_div',
+                'view': { 'columns': [1,5,6,7] },
+                'options': {
+                    hAxis: { title: 'Compensation of different type of professor on selected states'},
+                    vAxis: { format: 'currency'},                    
+                   'title': 'Compensation Division', // Put the title of the chart here. 
+                }
+            });
+            
+            var salesFilter = new google.visualization.ControlWrapper({
+                'width': 1000,
+                'height': 1200,
+                'controlType': 'NumberRangeFilter',
+                'containerId': 'sales_filter_div',
+                'options': {
+                    'filterColumnLabel': 'Full-Time',
+                    ui: { 'labelStacking': 'vertical', 'label': 'Salary' }
+                }
+            });
+            
+            var dofwFilter = new google.visualization.ControlWrapper({
+                'controlType': 'CategoryFilter',
+                'containerId': 'dofw_filter_div',
+                'options': {
+                    'filterColumnLabel': 'States',
+                    'ui': {
+                        'labelStacking': 'vertical',
+                        'allowTyping': false,
+                        'allowMultiple': true,
+                    }
+                }
+            });
+
+            // Create a dashboard
+            var dashboard = new google.visualization.Dashboard(document.getElementById('dashboard_div'));
+
+            // Bind controls with charts. These controls and charts are now part of the dashboard. 
+            dashboard.bind([dofwFilter,salesFilter],[columnChart,lineChart]);
+
+            // Draw the dashboard. 
+            dashboard.draw(response);
+        }
+    </script>
+</head>
+
+<body>
+    <div id="dashboard_div">
+        <table>
+            <tr>
+                <td>
+                    <div id="dofw_filter_div" style="">
+                    </div>
+                    <br/>
+                    <div id="sales_filter_div" style="">
+                    </div>
+                    <br/>
+                </td>
+                <td>
+                    <div id="bar_chart_div" style="height: 200px; width: 1000px; border-style: groove;">
+                    </div>
+                    <br/>
+                    <div id="line_chart_div" style="height: 200px; width: 1000px; border-style: groove;">
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div id="piechart"></div>
+</body>
+</html>
